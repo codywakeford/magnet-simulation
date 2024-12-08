@@ -23,7 +23,14 @@ public:
     const int FPS = 165;
     const float FRAME_TIME = 1.0f / FPS;
     const float vacuumPermeativity = 8.8e-12;
+    const float gravitational_constant = 5.0f;
     
+    // for collision dampening
+    const float minDistance = 50.0f;
+    const float dampingFactor = 0.2f;
+    //////////////////////////////////
+
+
     // int* testValue = std::any_cast<int>(&liveMap["testValue"]);
 
     std::unordered_map<std::string, std::any> liveMap = {

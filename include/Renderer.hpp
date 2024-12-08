@@ -1,14 +1,18 @@
 #include <SFML/Graphics.hpp>
 #include "Config.hpp"
+#include "InputManger.hpp"
 
 class Renderer {
 public:
     sf::Clock clock;
 
     void render(sf::RenderWindow& window) {
-        window.clear();
-
         await_frame();
+        window.clear(sf::Color::Black);
+
+        InputManager::renderAll(window);
+        Particle::renderAll();
+
         window.display();
     }
 
