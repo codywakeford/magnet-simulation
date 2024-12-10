@@ -3,14 +3,17 @@
 #ifndef WINDOW_MANAGER_HPP
 #define WINDOW_MANAGER_HPP
 
-class WindowManager {
-public:
-    sf::RenderWindow window;
+struct WindowManager {
+    static sf::RenderWindow window;
 
-    WindowManager() : window(sf::VideoMode(1920, 1080), "Maxwell") {
+    WindowManager() {
         window.setFramerateLimit(165);
     }
 };
+
+sf::RenderWindow WindowManager::window(sf::VideoMode(1920, 1080), "");
+sf::RenderWindow& window = WindowManager::window;
+
 extern WindowManager windowManger;
 
 #endif

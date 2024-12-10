@@ -1,0 +1,4 @@
+CompileFlangs:
+    IncludeDirs:
+        - "./include"
+        - "./src"

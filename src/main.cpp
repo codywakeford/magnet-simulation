@@ -1,29 +1,33 @@
 #include <SFML/Graphics.hpp>
-#include "Renderer.hpp"
-#include "WindowManager.hpp"
-#include "Simulation.hpp"
-#include "Config.hpp"
 #include <iostream>
+#include "Simulation.hpp"
+#include "Solver.hpp"
+#include "WindowManager.hpp"
+#include "Renderer.hpp"
 #include "InputManger.hpp"
+#include "Config.hpp"
+#include "Particle.hpp"
+#include "Grid.hpp"     
 
-Config config;
 
+Config config; // Stores Globals
+
+Solver solver;
 InputManager inputManager;
-std::vector<Particle> InputManager::particles;
 
 WindowManager windowManger;
 Renderer renderer;
+Grid grid;
 
 Simulation simulation;
-std::vector<Particle> Particle::particles;
 
 
 int main() {
 
-    while (windowManger.window.isOpen()) {
+    while (window.isOpen()) {
         inputManager.handle_inputs();
-        simulation.update(windowManger.window);
-        renderer.render(windowManger.window);
+        simulation.update(window);
+        renderer.render(window);
     }
 
     return 0;

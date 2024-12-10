@@ -10,7 +10,7 @@ public:
         await_frame();
         window.clear(sf::Color::Black);
 
-        InputManager::renderAll(window);
+        InputManager::renderAll(window, inputManager);
         Particle::renderAll();
 
         window.display();
