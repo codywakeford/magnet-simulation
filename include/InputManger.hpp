@@ -5,6 +5,7 @@
 #include <iostream>
 #include <cmath>
 #include "Particle.hpp"
+// #include "Simulation.hpp"
 #include "Config.hpp"
 
 class InputManager {
@@ -36,10 +37,18 @@ public:
 
             switch (event.type) {
 
+                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::R) {
+                    Particle::particles.clear();
+                }
+
+                // else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Space) {
+                //     simulation.isPaused == !simulation.isPaused;
+                // }
+
                 case sf::Event::MouseWheelScrolled:
                     updateParticleCount(event);
                     break;
-                
+
 
                 // Click and drag to add velocity to new object. // 
                 case sf::Event::MouseButtonPressed:
@@ -54,6 +63,7 @@ public:
                         endDrag(window);
                         
                     }
+
                     break;
                 default:
                     break;
@@ -105,32 +115,25 @@ public:
         }
 
         for (Particle& particle : particles) {
-
             particle.position = mousePosF += particle.positionOffset;
         }
 
         resolve_collisions();
     }
+
     void startDrag(sf::RenderWindow& window) {
-        sf::Vector2i mousePos = sf::Mouse::getPosition(window);
         dragStart = mousePosF;
         isDragging = true;
     }
 
     void endDrag(sf::RenderWindow& window) {
-        // float vX = dragStart.x - dragEnd.x;
-        // float vY = dragStart.y - dragEnd.y;
-
         sf::Vector2f velocity = dragStart - mousePosF;
-        // sf::Vector2f velocity(vX, vY);
-
-        Particle::add(particles, velocity);
-        // createSatellite(window, velocity * VELOCITY_MULTIPLYER, gameObjects);
+        std::cout << velocity.x << velocity.y << std::endl;
+        Particle::add(particles, (velocity * 0.2f));
+        InputManager::particles.clear();
 
         isDragging = false;
     }
-
-
     
     static void resolve_collisions() {  
         const float EPSILON = 1e-6f;
@@ -155,7 +158,7 @@ public:
             sf::VertexArray line(sf::Lines, 2);
             line[0].position = inputManager.dragStart;
             line[0].color = sf::Color::White;
-            line[1].position = inputManager.dragEnd;
+            line[1].position = inputManager.mousePosF;
             line[1].color = sf::Color::White;
             window.draw(line);
         }   

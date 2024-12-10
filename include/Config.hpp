@@ -21,10 +21,10 @@ public:
     const std::string filePath = "liveconfig.json";
     const int FPS = 60;
     const float FRAME_TIME = 1.0f / FPS;
-    const float gravitational_constant = 0.10f;
+    const float gravitational_constant = 0.3f;
     
     // for collision dampening
-    const float minDistance = 20.0f;
+    const float minDistance = 10.0f;
     const float dampingFactor = 0.8f;
     //////////////////////////////////
    

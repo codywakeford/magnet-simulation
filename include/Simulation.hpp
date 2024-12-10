@@ -6,10 +6,13 @@
 #include "InputManger.hpp"
 #include "Grid.hpp"
 struct Simulation {
+    bool isPaused = false;
 
-    void update(sf::RenderWindow& window) { 
+    void update(sf::RenderWindow& window) {
+        if (isPaused) return;
+
+
         inputManager.update();
-
         grid.assignParticlesToGrid(Particle::particles);
         grid.checkCollisionsInGrid();
         Solver::calculate_gravity(Particle::particles);

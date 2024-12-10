@@ -58,8 +58,8 @@ struct Particle {
     }
 
     static void add(std::vector<Particle> particlesToAdd, sf::Vector2f velocity) {
-        for (Particle particle : particlesToAdd) {
-            particle.velocity = velocity;
+        for (Particle& particle : particlesToAdd) {
+            particle.velocity += velocity;
         }
         
         particles.insert(particles.end(), particlesToAdd.begin(), particlesToAdd.end());
