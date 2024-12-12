@@ -5,6 +5,7 @@
 #include <vector>
 #include "WindowManager.hpp"
 #include "Config.hpp"
+#include "iostream"
 
 // An optimisation for collision detection.
 
@@ -31,16 +32,41 @@ struct Particle {
         mass = 3.14159f * radius * radius;
     }
     
-    void update() {
+    void update(float dt) {
         sf::Vector2f acceleration = force / mass; // a = F / m
             
-        velocity += acceleration;
+        velocity += acceleration * dt;
         position += velocity;
+
+        std::cout << particles.size() << std::endl;
     }
 
-    static void updateAll() {
-        for (Particle& particle : particles) {
-            particle.update();
+    static bool isOutOfBounds(Particle& particle) {
+        if (
+            particle.position.x > config.windowWidth || 
+            particle.position.x < 0 ||
+            particle.position.y > config.windowHeight ||
+            particle.position.y < 0
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    // Removes out of bound particles and moves the particles
+    // based on the force applied.
+    static void updateAll(float dt) {
+        for (auto it = particles.begin(); it != particles.end();) {
+            Particle& particle = *it; 
+
+            if (Particle::isOutOfBounds(particle)) {
+                it = particles.erase(it);
+                continue;
+            } else {
+                particle.update(dt);
+                it++;
+            }
         }
     }
 

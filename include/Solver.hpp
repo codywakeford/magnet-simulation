@@ -5,11 +5,12 @@
 #include "Particle.hpp"
 #include "Config.hpp"
 #include <vector>
+// #include "CollisionGrid.hpp"
 
 struct Solver {
     static void resolve_collision(Particle& body1, Particle& body2) {
         const float EPSILON = 1e-6f;
-        const float COLLISION_DAMPENING = 0.1f;
+        
         float dX = body1.position.x - body2.position.x;
         float dY = body1.position.y - body2.position.y;
         float normalMagnitude = std::sqrt(dX * dX + dY * dY);
@@ -41,8 +42,8 @@ struct Solver {
         sf::Vector2f impulse1 = normalVector * dotProductResult * massScaler1;
         sf::Vector2f impulse2 = normalVector * dotProductResult * massScaler2;
 
-        body1.velocity -= scaleVec(impulse1, COLLISION_DAMPENING);
-        body2.velocity += scaleVec(impulse2, COLLISION_DAMPENING);
+        body1.velocity -= scaleVec(impulse1, config.COLLISION_DAMPENING);
+        body2.velocity += scaleVec(impulse2, config.COLLISION_DAMPENING);
 
         // Positional correction to prevent overlap
         float penetrationDepth = sumOfRadii - normalMagnitude;
@@ -53,7 +54,9 @@ struct Solver {
 
     static void calculate_gravity(std::vector<Particle>& particles) {
         for (Particle& particle1 : particles) {
+
             particle1.force = {0.0f, 0.0f};
+            
             float forceX = 0.0f;
             float forceY = 0.0f;
             
@@ -64,10 +67,15 @@ struct Solver {
 
                 float dX = particle2.position.x - particle1.position.x;
                 float dY = particle2.position.y - particle1.position.y;
-                
-                float distanceSquared = dX * dX + dY * dY;
+
+                float gravitationalSoftningSquared =
+                    config.gravitational_softening *
+                    config.gravitational_softening;
+
+                float distanceSquared = dX * dX + dY * dY + gravitationalSoftningSquared;
                 float distance = std::sqrt(distanceSquared);
 
+                if (particle1.radius + particle2.radius > distance) return;
 
                 if (distance < config.minDistance) {
                     float forceMagnitude = (config.gravitational_constant * particle1.mass * particle2.mass) / (distanceSquared + config.minDistance);
@@ -88,13 +96,43 @@ struct Solver {
             }
         }
     }
+    // static void calculate_gravity(Particle& particle1, FakeGravityParticle& massParticle) {
 
-    // static void calculate_gravitational_force(Particle& particle1, Particle& particle2) {
-    // }
+    //     particle1.force = {0.0f, 0.0f};
+        
+    //     float forceX = 0.0f;
+    //     float forceY = 0.0f;
+        
+    //     int massProduct = particle1.mass * massParticle.mass;
 
-    // static void resolve_collisions() {
-    //     grid.assignParticlesToGrid(Particle::particles);
-    //     grid.checkCollisionsInGrid();
+    //     float dX = massParticle.position.x - particle1.position.x;
+    //     float dY = massParticle.position.y - particle1.position.y;
+
+    //     float gravitationalSoftningSquared =
+    //         config.gravitational_softening *
+    //         config.gravitational_softening;
+
+    //     float distanceSquared = dX * dX + dY * dY + gravitationalSoftningSquared;
+    //     float distance = std::sqrt(distanceSquared);
+
+    //     if (distance < config.gravityGridCellSize) return;
+
+    //     if (distance < config.minDistance) {
+    //         float forceMagnitude = (config.gravitational_constant * particle1.mass * massParticle.mass) / (distanceSquared + config.minDistance);
+    //         dX *= config.dampingFactor;
+    //         dY *= config.dampingFactor;
+    //         particle1.force.x += forceMagnitude * (dX / distance);
+    //         particle1.force.y += forceMagnitude * (dY / distance);
+    //         return; 
+    //     }
+
+    //     float forceMagnitude = ( config.gravitational_constant * massProduct) / distanceSquared;
+
+    //     forceX += forceMagnitude * (dX / distance);
+    //     forceY += forceMagnitude * (dY / distance);
+
+    //     particle1.force.x = forceX;
+    //     particle1.force.y = forceY;
     // }
 };
 

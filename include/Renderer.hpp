@@ -18,8 +18,8 @@ public:
 
     void await_frame() {
         sf::Time deltaTime = clock.restart();
-        if (deltaTime.asSeconds() < config.FRAME_TIME) {
-            sf::sleep(sf::seconds(config.FRAME_TIME - deltaTime.asSeconds()));
+        if (deltaTime.asSeconds() < config.dt) {
+            sf::sleep(sf::seconds(config.dt - deltaTime.asSeconds()));
         }
         clock.restart();
     }

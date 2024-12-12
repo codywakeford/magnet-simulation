@@ -7,7 +7,7 @@
 #include "InputManger.hpp"
 #include "Config.hpp"
 #include "Particle.hpp"
-#include "Grid.hpp"     
+#include "CollisionGrid.hpp"     
 
 
 Config config; // Stores Globals
@@ -17,7 +17,9 @@ InputManager inputManager;
 
 WindowManager windowManger;
 Renderer renderer;
-Grid grid;
+
+CollisionGrid collisionGrid;
+GravityGrid gravityGrid;
 
 Simulation simulation;
 
@@ -26,7 +28,7 @@ int main() {
 
     while (window.isOpen()) {
         inputManager.handle_inputs();
-        simulation.update(window);
+        simulation.update(window, config.dt);
         renderer.render(window);
     }
 

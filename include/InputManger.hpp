@@ -16,7 +16,7 @@ public:
     sf::Vector2f mousePosF = {0.0f, 0.0f};
     sf::Vector2i mousePosI = {0, 0};
 
-    int nParticles = 100;
+    int nParticles = 50;
     int radius = config.particleSize;
     sf::Vector2f particleVelocity = {0.0f, 0.0f};
     
@@ -88,8 +88,8 @@ public:
         mousePosI = sf::Mouse::getPosition(windowManger.window);
         mousePosF = sf::Vector2f(mousePosI);
 
-        const float spiralGrowthRate = 0.2f; 
-        const float angleStep = 3.0f;
+        const float spiralGrowthRate = 1.0f; 
+        const float angleStep = 3.00f;
         float currentAngle = 0.0f;
 
         while (particles.size() < nParticles) {
@@ -100,15 +100,13 @@ public:
             float x = mousePosF.x + r * cos(currentAngle);
             float y = mousePosF.y + r * sin(currentAngle);
 
-            Particle newParticle(mousePosF, 2, {0.0f,0.0f});
+            Particle newParticle(mousePosF, config.particleSize , {0.0f,0.0f});
             newParticle.positionOffset = sf::Vector2f(x - mousePosF.x, y - mousePosF.y);
             particles.push_back(newParticle);
 
-            std::cout << x << y << std::endl;
             // Increment the angle to "unwrap" the spiral
             currentAngle += angleStep;
         }
-        // std::cout << particles.size() << std::endl;
         // Ensure the particles don't exceed the max number of particles
         while (particles.size() > nParticles) {
             particles.pop_back();

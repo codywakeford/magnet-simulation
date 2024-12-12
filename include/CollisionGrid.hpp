@@ -5,14 +5,14 @@
 #include "Solver.hpp"
 #include <thread>
 
-struct Grid {
+struct CollisionGrid {
     int cellSize = config.particleSize;
     int nColumns = config.windowWidth / static_cast<int>(cellSize);
     int nRows = config.windowHeight / static_cast<int>(cellSize);
 
     std::vector<std::vector<std::vector<Particle*>>> cells;
 
-    Grid()
+    CollisionGrid()
         : cells(nColumns, std::vector<std::vector<Particle*>>(nRows)) {}
 
     void assignParticlesToGrid(std::vector<Particle>& particles) {
@@ -61,13 +61,13 @@ struct Grid {
             }
         };
 
-        const int numThreads = 10; // You can tune this based on your CPU cores.
+        const int numThreads = 6; 
         std::vector<std::thread> threads;
         int rowsPerThread = nRows / numThreads;
 
         for (int i = 0; i < numThreads; ++i) {
             int rowStart = i * rowsPerThread;
-            int rowEnd = (i == numThreads - 1) ? nRows : (i + 1) * rowsPerThread; // Handle remainder in the last thread
+            int rowEnd = (i == numThreads - 1) ? nRows : (i + 1) * rowsPerThread;
             threads.emplace_back(collisionCheck, rowStart, rowEnd);
         }
 
@@ -77,4 +77,4 @@ struct Grid {
     }
 };
 
-extern Grid grid;
+extern CollisionGrid collisionGrid;
