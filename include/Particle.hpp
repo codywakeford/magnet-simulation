@@ -31,7 +31,8 @@ struct Particle {
 
         mass = 3.14159f * radius * radius;
     }
-    
+
+    // Updates particle position based on applied force.
     void update(float dt) {
         sf::Vector2f acceleration = force / mass; // a = F / m
             
@@ -79,7 +80,7 @@ struct Particle {
 
     void render(sf::RenderWindow& window) {
         shape.setPosition(position);
-        shape.setFillColor(sf::Color::White);
+        shape.setFillColor(sf::Color::Green);
         WindowManager::window.draw(shape);
     }
 

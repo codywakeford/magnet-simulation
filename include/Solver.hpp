@@ -96,44 +96,46 @@ struct Solver {
             }
         }
     }
-    // static void calculate_gravity(Particle& particle1, FakeGravityParticle& massParticle) {
 
-    //     particle1.force = {0.0f, 0.0f};
+    static sf::Vector2f calculateGravitationalForce(
+        float mass1, sf::Vector2f position1, float mass2, sf::Vector2f position2) {
         
-    //     float forceX = 0.0f;
-    //     float forceY = 0.0f;
-        
-    //     int massProduct = particle1.mass * massParticle.mass;
+        sf::Vector2f force = {0.0f, 0.0f};          
+        int massProduct = mass1 * mass2;
 
-    //     float dX = massParticle.position.x - particle1.position.x;
-    //     float dY = massParticle.position.y - particle1.position.y;
+        sf::Vector2f dPos = position1 - position2;
 
-    //     float gravitationalSoftningSquared =
-    //         config.gravitational_softening *
-    //         config.gravitational_softening;
+        float gravitationalSofteningSquared =
+            config.gravitational_softening *
+            config.gravitational_softening;
 
-    //     float distanceSquared = dX * dX + dY * dY + gravitationalSoftningSquared;
-    //     float distance = std::sqrt(distanceSquared);
+        float distanceSquared = (dPos.x * dPos.x) + (dPos.y * dPos.y) + gravitationalSofteningSquared;
+        float distance = std::sqrt(distanceSquared);
 
-    //     if (distance < config.gravityGridCellSize) return;
 
-    //     if (distance < config.minDistance) {
-    //         float forceMagnitude = (config.gravitational_constant * particle1.mass * massParticle.mass) / (distanceSquared + config.minDistance);
-    //         dX *= config.dampingFactor;
-    //         dY *= config.dampingFactor;
-    //         particle1.force.x += forceMagnitude * (dX / distance);
-    //         particle1.force.y += forceMagnitude * (dY / distance);
-    //         return; 
-    //     }
+        if (distance < config.minDistance) {
+            float forceMagnitude = (config.gravitational_constant * mass1 * mass2) / (distanceSquared + config.minDistance);
+            dPos.x *= config.dampingFactor;
+            dPos.y *= config.dampingFactor;
 
-    //     float forceMagnitude = ( config.gravitational_constant * massProduct) / distanceSquared;
+            force.x = forceMagnitude * (dPos.x / distance);
+            force.y = forceMagnitude * (dPos.y / distance);
+            return force;
+        }
 
-    //     forceX += forceMagnitude * (dX / distance);
-    //     forceY += forceMagnitude * (dY / distance);
+        float forceMagnitude = (config.gravitational_constant * mass1 * mass2) / distanceSquared;
 
-    //     particle1.force.x = forceX;
-    //     particle1.force.y = forceY;
-    // }
+        // Normalize displacement vector
+        sf::Vector2f normalizedDisplacement = {dPos.x / distance, dPos.y / distance};
+
+        // Compute force vector
+        force.x = forceMagnitude * normalizedDisplacement.x;
+        force.y = forceMagnitude * normalizedDisplacement.y;
+
+        return force;
+    }
+
+
 };
 
 
