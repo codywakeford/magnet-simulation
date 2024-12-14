@@ -1,32 +1,33 @@
-#ifndef INPUT_MANAGER_HPP
-#define INPUT_MANAGER_HPP
+#pragma once
 
 #include <SFML/Graphics.hpp>
 #include <iostream>
 #include <cmath>
 #include "Particle.hpp"
-// #include "Simulation.hpp"
+#include "Simulation.hpp"
 #include "Config.hpp"
 
-class InputManager {
-public:
+struct InputManager {
     // Holds all of the particles under the cursor; 
     static std::vector<Particle> particles;
 
-    sf::Vector2f mousePosF = {0.0f, 0.0f};
-    sf::Vector2i mousePosI = {0, 0};
+    static sf::Vector2f mousePosF;
+    static sf::Vector2i mousePosI;
 
-    int nParticles = 50;
-    int radius = config.particleSize;
-    sf::Vector2f particleVelocity = {0.0f, 0.0f};
+    static int nParticles;
+    static int radius;
+    static sf::Vector2f particleVelocity;
     
-    bool isDragging = false;
-    sf::Vector2f dragStart;
-    sf::Vector2f dragEnd;
+    static bool isDragging;
+    static sf::Vector2f dragStart;
+    static sf::Vector2f dragEnd;
 
-public:
+    static sf::Clock clock;
+    static int counter;
+    static int ms;
 
-    void handle_inputs() {
+    static void handle_inputs() {
+        clock.restart();
         sf::Event event;
 
         while (windowManger.window.pollEvent(event)) {
@@ -37,13 +38,13 @@ public:
 
             switch (event.type) {
 
-                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::R) {
-                    Particle::particles.clear();
-                }
-
-                // else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Space) {
-                //     simulation.isPaused == !simulation.isPaused;
-                // }
+                case sf::Event::KeyPressed:
+                    if (event.key.code == sf::Keyboard::R) {
+                        Particle::particles.clear();
+                    }
+                    else if (event.key.code == sf::Keyboard::Space) {
+                        Simulation::isPaused = !Simulation::isPaused;
+                    }
 
                 case sf::Event::MouseWheelScrolled:
                     updateParticleCount(event);
@@ -70,9 +71,22 @@ public:
                 
             }
         }
+
+        update();
     }
 
-    void updateParticleCount(sf::Event event) {
+    static int getInputHandlingDuration() {
+        if (counter < 10) {
+            counter++;
+            return ms;
+        }
+        counter = 0;
+        ms = static_cast<int>(clock.getElapsedTime().asMilliseconds());
+        clock.restart();
+        return ms;
+    }
+
+    static void updateParticleCount(sf::Event event) {
         if (event.type == sf::Event::MouseWheelScrolled) {
             if (event.mouseWheelScroll.delta > 0) {
                 nParticles += 3;
@@ -84,47 +98,41 @@ public:
         }
     }
 
-    void update() {
+    static void update() {
         mousePosI = sf::Mouse::getPosition(windowManger.window);
         mousePosF = sf::Vector2f(mousePosI);
 
-        const float spiralGrowthRate = 1.0f; 
-        const float angleStep = 3.00f;
-        float currentAngle = 0.0f;
+        const float particleSpacing = config.particleSize + 1.25f;
+        int gridSide = static_cast<int>(std::sqrt(nParticles));  
 
-        while (particles.size() < nParticles) {
-            // Calculate the current distance from the center using the spiral formula
-            float r = spiralGrowthRate * sqrt(currentAngle);
-
-            // Convert polar to Cartesian coordinates
-            float x = mousePosF.x + r * cos(currentAngle);
-            float y = mousePosF.y + r * sin(currentAngle);
-
-            Particle newParticle(mousePosF, config.particleSize , {0.0f,0.0f});
-            newParticle.positionOffset = sf::Vector2f(x - mousePosF.x, y - mousePosF.y);
+        while (particles.size() < static_cast<std::vector<Particle>::size_type>(nParticles)) {
+            Particle newParticle({0.0f, 0.0f}, config.particleSize - 1, {0.0f, 0.0f});
             particles.push_back(newParticle);
-
-            // Increment the angle to "unwrap" the spiral
-            currentAngle += angleStep;
         }
-        // Ensure the particles don't exceed the max number of particles
-        while (particles.size() > nParticles) {
+        while (particles.size() > static_cast<std::vector<Particle>::size_type>(nParticles)) {
             particles.pop_back();
         }
 
-        for (Particle& particle : particles) {
-            particle.position = mousePosF += particle.positionOffset;
+        int particleIndex = 0;
+        for (int row = 0; row < gridSide && particleIndex < nParticles; ++row) {
+            for (int col = 0; col < gridSide && particleIndex < nParticles; ++col) {
+                float x = mousePosF.x + (col - gridSide / 2.0f) * particleSpacing;
+                float y = mousePosF.y + (row - gridSide / 2.0f) * particleSpacing;
+
+                particles[particleIndex].position = {x, y};
+                ++particleIndex;
+            }
         }
 
-        resolve_collisions();
     }
 
-    void startDrag(sf::RenderWindow& window) {
+
+    static void startDrag(sf::RenderWindow& window) {
         dragStart = mousePosF;
         isDragging = true;
     }
 
-    void endDrag(sf::RenderWindow& window) {
+    static void endDrag(sf::RenderWindow& window) {
         sf::Vector2f velocity = dragStart - mousePosF;
         std::cout << velocity.x << velocity.y << std::endl;
         Particle::add(particles, (velocity * 0.2f));
@@ -133,30 +141,17 @@ public:
         isDragging = false;
     }
     
-    static void resolve_collisions() {  
-        const float EPSILON = 1e-6f;
-
-        for (size_t i = 0; i < particles.size(); i++) {
-            for (size_t j = i + 1; j < particles.size(); j++) {
-                Particle& particle1 = particles[i];
-                Particle& particle2 = particles[j];
-
-                Solver::resolve_collision(particle1, particle2);
-            }
-        }
-    }
-
  
-    static void renderAll(sf::RenderWindow& window, InputManager& inputManager) {
+    static void renderAll(sf::RenderWindow& window) {
         for (Particle& particle : particles) {
             particle.render(window);
         }
 
-        if (inputManager.isDragging) {
+        if (InputManager::isDragging) {
             sf::VertexArray line(sf::Lines, 2);
-            line[0].position = inputManager.dragStart;
+            line[0].position = InputManager::dragStart;
             line[0].color = sf::Color::White;
-            line[1].position = inputManager.mousePosF;
+            line[1].position = InputManager::mousePosF;
             line[1].color = sf::Color::White;
             window.draw(line);
         }   
@@ -165,6 +160,18 @@ public:
 };
 
 std::vector<Particle> InputManager::particles;
-extern InputManager inputManager;
 
-#endif
+sf::Vector2f InputManager::mousePosF = {0.0f, 0.0f};
+sf::Vector2i InputManager::mousePosI = {0, 0};
+
+int InputManager::nParticles = 50;
+int InputManager::radius = config.particleSize;
+sf::Vector2f InputManager::particleVelocity = {0.0f, 0.0f};
+
+bool InputManager::isDragging = false;
+sf::Vector2f InputManager::dragStart;
+sf::Vector2f InputManager::dragEnd;
+
+sf::Clock InputManager::clock;
+int InputManager::counter = 0;
+int InputManager::ms = 0;

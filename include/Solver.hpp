@@ -1,11 +1,9 @@
 #pragma once
 
-// #include "Grid.hpp"
 #include "vector_math_utils.hpp"
 #include "Particle.hpp"
 #include "Config.hpp"
 #include <vector>
-// #include "CollisionGrid.hpp"
 
 struct Solver {
     static void resolve_collision(Particle& body1, Particle& body2) {
@@ -21,7 +19,7 @@ struct Solver {
         sf::Vector2f normalVector((dX / normalMagnitude), (dY / normalMagnitude));
 
         // r1 + r2
-        float sumOfRadii = body1.shape.getRadius() + body2.shape.getRadius();
+        float sumOfRadii = config.particleSize * 2;
         if (normalMagnitude + EPSILON >= sumOfRadii) return;
 
         // v2 - v1
@@ -30,7 +28,6 @@ struct Solver {
         // (2 x m2)
         // ---------
         //  m1 + m2
-        float massScaler = (2 * body2.mass) / (body1.mass + body2.mass);
 
         // (v2 - v1) * (x2 - x1)
         float dotProductResult = dotProduct(velocityDifference, normalVector);
@@ -52,83 +49,53 @@ struct Solver {
         body2.position -= correctionVector;
     }
 
-    static void calculate_gravity(std::vector<Particle>& particles) {
+    // Brute Force O(n*n)
+    static void calculateGravity(std::vector<Particle>& particles) {
         for (Particle& particle1 : particles) {
-
             particle1.force = {0.0f, 0.0f};
-            
-            float forceX = 0.0f;
-            float forceY = 0.0f;
-            
+
             for (Particle& particle2 : particles) {
                 if (&particle1 == &particle2) continue;
-                
-                int massProduct = particle1.mass * particle2.mass;
 
-                float dX = particle2.position.x - particle1.position.x;
-                float dY = particle2.position.y - particle1.position.y;
-
-                float gravitationalSoftningSquared =
-                    config.gravitational_softening *
-                    config.gravitational_softening;
-
-                float distanceSquared = dX * dX + dY * dY + gravitationalSoftningSquared;
-                float distance = std::sqrt(distanceSquared);
-
-                if (particle1.radius + particle2.radius > distance) return;
-
-                if (distance < config.minDistance) {
-                    float forceMagnitude = (config.gravitational_constant * particle1.mass * particle2.mass) / (distanceSquared + config.minDistance);
-                    dX *= config.dampingFactor;
-                    dY *= config.dampingFactor;
-                    particle1.force.x += forceMagnitude * (dX / distance);
-                    particle1.force.y += forceMagnitude * (dY / distance);
-                    continue; 
-                }
-
-                float forceMagnitude = ( config.gravitational_constant * massProduct) / distanceSquared;
-
-                forceX += forceMagnitude * (dX / distance);
-                forceY += forceMagnitude * (dY / distance);
-
-                particle1.force.x = forceX;
-                particle1.force.y = forceY;
+                particle1.force += calculateGravitationalForce(
+                    particle1.mass, particle1.position, particle2.mass,
+                    particle2.position);
             }
         }
     }
+
+    /*
+          G * m1 * m2
+    F =  --------------
+            r*r + e*e
+
+
+    F = force
+    G = Gravitational Constant
+    m1 = Mass 1
+    m2 = Mass 2
+    r = Distance between bodies
+    e = Softening factor - This reduces forces at small distances.
+
+    */
 
     static sf::Vector2f calculateGravitationalForce(
         float mass1, sf::Vector2f position1, float mass2, sf::Vector2f position2) {
         
         sf::Vector2f force = {0.0f, 0.0f};          
-        int massProduct = mass1 * mass2;
+        sf::Vector2f dPos = position2 - position1;
 
-        sf::Vector2f dPos = position1 - position2;
+        // Pythagoras for distance.       
+        float distanceSquared = (dPos.x * dPos.x) + (dPos.y * dPos.y);
+        float distance = std::sqrt(distanceSquared + config.epsilon);
 
-        float gravitationalSofteningSquared =
-            config.gravitational_softening *
-            config.gravitational_softening;
+        float forceMagnitude = 
+            (config.gravitational_constant * mass1 * mass2) / 
+            (distanceSquared + config.gravitationalSoftening);
 
-        float distanceSquared = (dPos.x * dPos.x) + (dPos.y * dPos.y) + gravitationalSofteningSquared;
-        float distance = std::sqrt(distanceSquared);
-
-
-        if (distance < config.minDistance) {
-            float forceMagnitude = (config.gravitational_constant * mass1 * mass2) / (distanceSquared + config.minDistance);
-            dPos.x *= config.dampingFactor;
-            dPos.y *= config.dampingFactor;
-
-            force.x = forceMagnitude * (dPos.x / distance);
-            force.y = forceMagnitude * (dPos.y / distance);
-            return force;
-        }
-
-        float forceMagnitude = (config.gravitational_constant * mass1 * mass2) / distanceSquared;
-
-        // Normalize displacement vector
+        // Direction of force
         sf::Vector2f normalizedDisplacement = {dPos.x / distance, dPos.y / distance};
 
-        // Compute force vector
         force.x = forceMagnitude * normalizedDisplacement.x;
         force.y = forceMagnitude * normalizedDisplacement.y;
 

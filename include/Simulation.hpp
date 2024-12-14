@@ -1,31 +1,77 @@
-#ifndef SIMULATION_HPP
-#define SIMULATION_HPP
+#pragma once
 
 #include <SFML/Graphics.hpp>
 #include "Solver.hpp" 
-#include "InputManger.hpp"
 #include "CollisionGrid.hpp"
-#include "GravityGrid.hpp"
+#include "TextManager.hpp"
 
 struct Simulation {
-    bool isPaused = false;
+    static bool isPaused;
+    static sf::Clock clock;
+    static sf::Clock frameClock;
 
-    void update(sf::RenderWindow& window, float dt) {
+    static int counter;
+    static int ms;
+    static int frameCount;
+    static int fps;
 
+    static void update(float dt) {
+        if (isPaused) {
+            TextManager::update();
+            return;
+        }
 
-        inputManager.update();
+        clock.restart();
+
         collisionGrid.assignParticlesToGrid(Particle::particles);
         collisionGrid.checkCollisionsInGrid();
 
-        gravityGrid.assignParticlesToGrid(Particle::particles);
-        gravityGrid.calculateGravity();
-
-        // Solver::calculate_gravity(Particle::particles);
-
+        Solver::calculateGravity(Particle::particles);
         Particle::updateAll(dt);
+
+        frameCount++;
+        TextManager::update();
+        
+    }
+
+    static void calculateFPS() {
+        // Calculate FPS every second
+        if (frameClock.getElapsedTime().asSeconds() >= 1.0f) {
+            fps = frameCount;
+            frameCount = 0;
+            frameClock.restart();
+        }
+    }
+
+    static int getFps() {
+        if (counter % 5 != 0) {
+            return fps;
+        }
+
+        calculateFPS();
+        return fps;
+    }
+
+    static int getSimulationDuration() {
+        if (isPaused) return 0;
+        
+
+        if (counter < 10) {
+            counter++;
+            return ms;
+        }
+
+        counter = 0;
+        ms = static_cast<int>(clock.getElapsedTime().asMilliseconds());
+        return ms;
     }
 };
 
-extern Simulation simulation;
+int Simulation::ms = 0;
+int Simulation::counter = 0;
+int Simulation::fps = 60;
+int Simulation::frameCount = 0;
+bool Simulation::isPaused = false;
 
-#endif
+sf::Clock Simulation::frameClock;
+sf::Clock Simulation::clock;

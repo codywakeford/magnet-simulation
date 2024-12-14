@@ -39,7 +39,7 @@ struct Particle {
         velocity += acceleration * dt;
         position += velocity;
 
-        std::cout << particles.size() << std::endl;
+        // std::cout << particles.size() << std::endl;
     }
 
     static bool isOutOfBounds(Particle& particle) {
