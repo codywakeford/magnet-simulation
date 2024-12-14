@@ -51,6 +51,8 @@ struct Solver {
 
     // Brute Force O(n*n)
     static void calculateGravity(std::vector<Particle>& particles) {
+        if (config.gravitational_constant == 0.0f) return;
+
         for (Particle& particle1 : particles) {
             particle1.force = {0.0f, 0.0f};
 

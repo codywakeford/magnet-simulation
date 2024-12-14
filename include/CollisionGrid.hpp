@@ -6,7 +6,7 @@
 #include <thread>
 
 struct CollisionGrid {
-    int cellSize = config.particleSize;
+    int cellSize = config.particleSize * 4;
     int nColumns = config.windowWidth / static_cast<int>(cellSize);
     int nRows = config.windowHeight / static_cast<int>(cellSize);
 
@@ -34,7 +34,32 @@ struct CollisionGrid {
         }
     }
 
+    void _checkCollisionsInGrid() {
+        const int dx[9] = {-1, -1, -1,  0, 0, 0,  1, 1, 1};
+        const int dy[9] = {-1,  0,  1, -1, 0, 1, -1, 0, 1};
 
+        for (int col = 0; col < nColumns; ++col) {
+            for (int row = 0; row < nRows; ++row) {
+                for (Particle* particle1 : cells[col][row]) {
+                    for (int dir = 0; dir < 9; ++dir) {
+                        int adjCol = col + dx[dir];
+                        int adjRow = row + dy[dir];
+
+                        if (adjCol >= 0 && adjCol < nColumns &&
+                            adjRow >= 0 && adjRow < nRows) {
+                            for (Particle* particle2 : cells[adjCol][adjRow]) {
+                                if (particle1 != particle2) {
+                                    Solver::resolve_collision(*particle1, *particle2);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Threaded
     void checkCollisionsInGrid() {
         const int dx[9] = {-1, -1, -1,  0, 0, 0,  1, 1, 1};
         const int dy[9] = {-1,  0,  1, -1, 0, 1, -1, 0, 1};

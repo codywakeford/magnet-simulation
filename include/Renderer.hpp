@@ -4,42 +4,38 @@
 #include "LiveText.hpp"
 
 struct Renderer {
-    static sf::Clock clock;
-    
-    static int counter;
-    static int ms;
+    static sf::Clock frameTimer;
+    static int renderTimeUs;
+    static int frameCount;
+    static int totalRenderTimeUs;
 
     static void render() {
-        awaitFrame();
+        frameTimer.restart();
+
         window.clear(sf::Color::Black);
-
-        InputManager::renderAll(window);
+        InputManager::renderAll();
         Particle::renderAll();
-        TextManager::render(window);
-
+        TextManager::render();
         window.display();
+
+        handleTimer();
     }
 
-    static int getRenderDuration() {
-        if (counter < 10) {
-            counter++;
-            return ms;
-        }
-        counter = 0;
-        ms = static_cast<int>(clock.getElapsedTime().asMilliseconds());
-        return ms;
-    }
+    static void handleTimer() {
+        int currentFrameTime = frameTimer.getElapsedTime().asMicroseconds();
+        totalRenderTimeUs += currentFrameTime;
+        frameCount++;
 
-    static void awaitFrame() {
-        sf::Time deltaTime = clock.restart();
-        if (deltaTime.asSeconds() < config.dt) {
-            sf::sleep(sf::seconds(config.dt - deltaTime.asSeconds()));
+        // Update every N frames (e.g., every 60 frames)
+        if (frameCount == 60) {
+            renderTimeUs = totalRenderTimeUs / frameCount;
+            totalRenderTimeUs = 0; // Reset for next period
+            frameCount = 0;
         }
-        clock.restart();
-    }
+    } 
 };
 
-int Renderer::counter = 0;
-int Renderer::ms = 0;
-
-sf::Clock Renderer::clock;
+int Renderer::renderTimeUs = 0;
+int Renderer::frameCount = 0;
+int Renderer::totalRenderTimeUs = 0;
+sf::Clock Renderer::frameTimer;

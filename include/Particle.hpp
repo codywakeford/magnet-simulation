@@ -1,13 +1,10 @@
-#ifndef PARTICLE_HPP
-#define PARTICLE_HPP
+#pragma once
 
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include "WindowManager.hpp"
 #include "Config.hpp"
 #include "iostream"
-
-// An optimisation for collision detection.
 
 
 struct Particle {
@@ -61,7 +58,7 @@ struct Particle {
         for (auto it = particles.begin(); it != particles.end();) {
             Particle& particle = *it; 
 
-            if (Particle::isOutOfBounds(particle)) {
+            if (isOutOfBounds(particle)) {
                 it = particles.erase(it);
                 continue;
             } else {
@@ -72,17 +69,24 @@ struct Particle {
     }
 
     static void renderAll() {
-        for (Particle& particle : particles) {
-            particle.shape.setPosition(particle.position);
-            WindowManager::window.draw(particle.shape);
+        sf::VertexArray particlesArray(sf::Points, particles.size());
+
+        for (size_t i = 0; i < particles.size(); ++i) {
+            Particle& particle = particles[i];
+
+            particlesArray[i].position = particle.position;
+            particlesArray[i].color = sf::Color::Green;
         }
+
+        window.draw(particlesArray);
     }
 
-    void render(sf::RenderWindow& window) {
-        shape.setPosition(position);
-        shape.setFillColor(sf::Color::Green);
-        WindowManager::window.draw(shape);
+    void render() {
+        shape.setPosition(position);  
+
+        window.draw(shape); 
     }
+
 
     static void add(std::vector<Particle> particlesToAdd, sf::Vector2f velocity) {
         for (Particle& particle : particlesToAdd) {
@@ -97,5 +101,4 @@ struct Particle {
 
 std::vector<Particle> Particle::particles;
 
-#endif
 

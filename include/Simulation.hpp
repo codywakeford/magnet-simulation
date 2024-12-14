@@ -7,21 +7,24 @@
 
 struct Simulation {
     static bool isPaused;
-    static sf::Clock clock;
-    static sf::Clock frameClock;
 
-    static int counter;
-    static int ms;
-    static int frameCount;
+
     static int fps;
 
+    static sf::Clock frameTimer;
+    static int simulationTimeUs;
+    static int frameCount;
+    static int totalSimulationTimeUs;
+
+
+
     static void update(float dt) {
+        frameTimer.restart();
+
         if (isPaused) {
             TextManager::update();
             return;
         }
-
-        clock.restart();
 
         collisionGrid.assignParticlesToGrid(Particle::particles);
         collisionGrid.checkCollisionsInGrid();
@@ -29,49 +32,33 @@ struct Simulation {
         Solver::calculateGravity(Particle::particles);
         Particle::updateAll(dt);
 
-        frameCount++;
+        // frameCount++;
         TextManager::update();
-        
+
+        handleTimer();
     }
 
-    static void calculateFPS() {
-        // Calculate FPS every second
-        if (frameClock.getElapsedTime().asSeconds() >= 1.0f) {
-            fps = frameCount;
+    static void handleTimer() {
+        int currentFrameTime = frameTimer.getElapsedTime().asMicroseconds();
+        totalSimulationTimeUs += currentFrameTime;
+        frameCount++;
+
+        // Update every N frames (e.g., every 60 frames)
+        if (frameCount == 60) {
+            simulationTimeUs = totalSimulationTimeUs / frameCount;
+            totalSimulationTimeUs = 0; // Reset for next period
             frameCount = 0;
-            frameClock.restart();
         }
-    }
+    } 
 
-    static int getFps() {
-        if (counter % 5 != 0) {
-            return fps;
-        }
-
-        calculateFPS();
-        return fps;
-    }
-
-    static int getSimulationDuration() {
-        if (isPaused) return 0;
-        
-
-        if (counter < 10) {
-            counter++;
-            return ms;
-        }
-
-        counter = 0;
-        ms = static_cast<int>(clock.getElapsedTime().asMilliseconds());
-        return ms;
-    }
 };
 
-int Simulation::ms = 0;
-int Simulation::counter = 0;
+
 int Simulation::fps = 60;
-int Simulation::frameCount = 0;
 bool Simulation::isPaused = false;
 
-sf::Clock Simulation::frameClock;
-sf::Clock Simulation::clock;
+
+int Simulation::simulationTimeUs = 0;
+int Simulation::frameCount = 0;
+int Simulation::totalSimulationTimeUs = 0;
+sf::Clock Simulation::frameTimer;

@@ -9,7 +9,7 @@
 struct TextManager {
     static std::vector<LiveText> textObjects;
 
-    static void render(sf::RenderWindow& window) {
+    static void render() {
         if (textObjects.size() == 0) {
             std::cerr << "No LiveText objects to render!" << std::endl;
             return;

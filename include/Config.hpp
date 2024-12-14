@@ -9,7 +9,9 @@ struct Config {
     const float dt = 1.0f / FPS;
 
     // Gravity //
-    const float gravitational_constant = 250.0f;
+    float gravitational_constant = 250.0f;
+    // float gravitational_constant = 0.0f;
+
     const float gravitationalSoftening = 100000.0f; // for use at small distances
     /////////////
 

@@ -22,17 +22,21 @@ struct InputManager {
     static sf::Vector2f dragStart;
     static sf::Vector2f dragEnd;
 
-    static sf::Clock clock;
-    static int counter;
-    static int ms;
+    static sf::Clock frameTimer;
+    static int timeUs;
+    static int frameCount;
+    static int totalTimeUs;
+
+    static float particleSpacing;
 
     static void handle_inputs() {
-        clock.restart();
+        frameTimer.restart();
+
         sf::Event event;
 
-        while (windowManger.window.pollEvent(event)) {
+        while (window.pollEvent(event)) {
             if (event.type == sf::Event::Closed) {
-                windowManger.window.close();
+                window.close();
             }
 
 
@@ -47,7 +51,14 @@ struct InputManager {
                     }
 
                 case sf::Event::MouseWheelScrolled:
-                    updateParticleCount(event);
+                    if (event.key.code == sf::Keyboard::LControl) {
+                        changeParticleSpacing(event);
+                        break;
+                    }
+
+                    else {
+                        updateParticleCount(event);
+                    }
                     break;
 
 
@@ -73,37 +84,53 @@ struct InputManager {
         }
 
         update();
+        handleTimer();
     }
 
-    static int getInputHandlingDuration() {
-        if (counter < 10) {
-            counter++;
-            return ms;
+    static void handleTimer() {
+        int currentFrameTime = frameTimer.getElapsedTime().asMicroseconds();
+        totalTimeUs += currentFrameTime;
+        frameCount++;
+
+        // Update every N frames (e.g., every 60 frames)
+        if (frameCount == 60) {
+            timeUs = totalTimeUs / frameCount;
+            totalTimeUs = 0; // Reset for next period
+            frameCount = 0;
         }
-        counter = 0;
-        ms = static_cast<int>(clock.getElapsedTime().asMilliseconds());
-        clock.restart();
-        return ms;
+    } 
+
+    static void updateParticleCount(sf::Event& event) {
+        if (event.mouseWheelScroll.delta > 0) {
+            nParticles += 3;
+        } 
+        
+        else if (nParticles > 3) {
+            nParticles -= 3;
+            
+        }
     }
 
-    static void updateParticleCount(sf::Event event) {
-        if (event.type == sf::Event::MouseWheelScrolled) {
-            if (event.mouseWheelScroll.delta > 0) {
-                nParticles += 3;
-            } else {
-                if (nParticles > 3) {
-                    nParticles -= 3;
-                }
-            }
+    static void changeParticleSpacing(sf::Event& event) {
+        if (event.mouseWheelScroll.delta > 0) {
+            particleSpacing += 0.5f;
+        } 
+
+        else if (particleSpacing > 1.0f) {
+            particleSpacing -= 0.5f;
         }
     }
 
     static void update() {
-        mousePosI = sf::Mouse::getPosition(windowManger.window);
+        mousePosI = sf::Mouse::getPosition(window);
         mousePosF = sf::Vector2f(mousePosI);
 
-        const float particleSpacing = config.particleSize + 1.25f;
-        int gridSide = static_cast<int>(std::sqrt(nParticles));  
+        int gridSide = static_cast<int>(std::sqrt(nParticles));
+        size_t particleCount = static_cast<std::vector<Particle>::size_type>(nParticles);
+
+        if (particles.size() != particleCount) {
+            particles.resize(particleCount, Particle({0.0f, 0.0f}, config.particleSize - 1, {0.0f, 0.0f}));
+        }
 
         while (particles.size() < static_cast<std::vector<Particle>::size_type>(nParticles)) {
             Particle newParticle({0.0f, 0.0f}, config.particleSize - 1, {0.0f, 0.0f});
@@ -116,10 +143,11 @@ struct InputManager {
         int particleIndex = 0;
         for (int row = 0; row < gridSide && particleIndex < nParticles; ++row) {
             for (int col = 0; col < gridSide && particleIndex < nParticles; ++col) {
-                float x = mousePosF.x + (col - gridSide / 2.0f) * particleSpacing;
-                float y = mousePosF.y + (row - gridSide / 2.0f) * particleSpacing;
+                // Avoid recomputing the same values every iteration
+                float offsetX = (col - gridSide / 2.0f) * particleSpacing;
+                float offsetY = (row - gridSide / 2.0f) * particleSpacing;
 
-                particles[particleIndex].position = {x, y};
+                particles[particleIndex].position = {mousePosF.x + offsetX, mousePosF.y + offsetY};
                 ++particleIndex;
             }
         }
@@ -142,9 +170,9 @@ struct InputManager {
     }
     
  
-    static void renderAll(sf::RenderWindow& window) {
+    static void renderAll() {
         for (Particle& particle : particles) {
-            particle.render(window);
+            particle.render();
         }
 
         if (InputManager::isDragging) {
@@ -172,6 +200,10 @@ bool InputManager::isDragging = false;
 sf::Vector2f InputManager::dragStart;
 sf::Vector2f InputManager::dragEnd;
 
-sf::Clock InputManager::clock;
-int InputManager::counter = 0;
-int InputManager::ms = 0;
+float InputManager::particleSpacing = 4.0f;
+
+
+sf::Clock InputManager::frameTimer;
+int InputManager::timeUs = 0;
+int InputManager::frameCount = 0;
+int InputManager::totalTimeUs = 0;
