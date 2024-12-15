@@ -5,7 +5,9 @@
 #include "WindowManager.hpp"
 #include "Config.hpp"
 #include "iostream"
-
+#include <cmath>
+#include <random>
+#include <algorithm>
 
 struct Particle {
     static std::vector<Particle> particles;
@@ -96,6 +98,54 @@ struct Particle {
         particles.insert(particles.end(), particlesToAdd.begin(), particlesToAdd.end());
     }
 
+
+    static void uniform_disc(int n) {
+        std::mt19937 rng(0); // Seed for deterministic results
+        std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+        std::uniform_real_distribution<float> angleDist(0.0f, 2.0f * M_PI);
+
+        float inner_radius = 5.0f;
+        float outer_radius = sqrt(static_cast<float>(n)) * 10.0f;
+
+        std::vector<Particle> particleList;
+        float centralMass = 5.0f; // Mass of the central particle
+        
+        // Create the central particle (massive center object)
+        Particle center(sf::Vector2f(config.windowWidth / 2, config.windowHeight / 2),
+                        inner_radius, sf::Vector2f(0.0f, 0.0f));
+        center.mass = centralMass;
+        particleList.push_back(center);
+        
+        // Generate the remaining particles
+        while (particleList.size() < n) {
+            float angle = angleDist(rng);
+            float radius = dist(rng) * (outer_radius - inner_radius) + inner_radius;
+
+            // Calculate position
+            sf::Vector2f pos = sf::Vector2f(std::cos(angle), std::sin(angle)) * radius;
+            pos += sf::Vector2f(config.windowWidth / 2, config.windowHeight / 2);
+
+            // Calculate orbital velocity
+            float r = radius;
+            float v = std::sqrt((config.gravitational_constant * centralMass) / r); // Orbital velocity
+
+            // Velocity is perpendicular to the radial vector
+            sf::Vector2f vel = sf::Vector2f(std::sin(angle), -std::cos(angle)) * (v + 0.80f) ;
+
+            // Create the particle
+            float mass = 1.0f; // Mass of individual particle
+            float particleRadius = cbrt(mass); // Adjust radius based on mass
+            Particle p(pos, particleRadius, vel);
+            p.mass = mass;
+
+            particleList.push_back(p);
+        }
+
+        // Add particles to the main list
+        for (Particle& particle : particleList) {
+            particles.push_back(particle);
+        }
+    }
 
 };
 

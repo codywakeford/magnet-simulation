@@ -11,13 +11,16 @@ struct Renderer {
 
     static void render() {
         frameTimer.restart();
-
         window.clear(sf::Color::Black);
+
+        // quadTree.render();
         InputManager::renderAll();
         Particle::renderAll();
         TextManager::render();
-        window.display();
 
+
+
+        window.display();
         handleTimer();
     }
 

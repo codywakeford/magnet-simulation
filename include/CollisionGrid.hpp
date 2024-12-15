@@ -6,9 +6,9 @@
 #include <thread>
 
 struct CollisionGrid {
-    int cellSize = config.particleSize * 4;
-    int nColumns = config.windowWidth / static_cast<int>(cellSize);
-    int nRows = config.windowHeight / static_cast<int>(cellSize);
+    constexpr static int cellSize = Config::particleSize; 
+    constexpr static int nColumns = Config::windowWidth / cellSize;
+    constexpr static int nRows = Config::windowHeight / cellSize;
 
     std::vector<std::vector<std::vector<Particle*>>> cells;
 
@@ -67,6 +67,7 @@ struct CollisionGrid {
         auto collisionCheck = [&](int rowStart, int rowEnd) {
             for (int col = 0; col < nColumns; ++col) {
                 for (int row = rowStart; row < rowEnd; ++row) {
+                    
                     for (Particle* particle1 : cells[col][row]) {
                         for (int dir = 0; dir < 9; ++dir) {
                             int adjCol = col + dx[dir];
@@ -86,7 +87,7 @@ struct CollisionGrid {
             }
         };
 
-        const int numThreads = 6; 
+        const int numThreads = 1; 
         std::vector<std::thread> threads;
         int rowsPerThread = nRows / numThreads;
 
@@ -102,4 +103,5 @@ struct CollisionGrid {
     }
 };
 
+// constexpr int CollisionGrid::cellSize = Config::particleSize;
 extern CollisionGrid collisionGrid;

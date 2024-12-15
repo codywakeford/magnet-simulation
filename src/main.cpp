@@ -9,6 +9,8 @@
 #include "Particle.hpp"
 #include "CollisionGrid.hpp"    
 #include "TextManager.hpp"
+#include "BarnesHut.cpp"
+
 
 Config config; // Stores Globals
 CollisionGrid collisionGrid;
@@ -53,9 +55,10 @@ int main() {
     TextManager::textObjects.push_back(inputHandlingTime);
     TextManager::textObjects.push_back(paused);
 
+    Particle::uniform_disc(2500);
+
 
     while (window.isOpen()) {
-
         Simulation::update(config.dt);
 
         InputManager::handle_inputs();

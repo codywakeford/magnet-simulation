@@ -5,29 +5,25 @@
 #include "Config.hpp"
 #include <vector>
 
+#include <thread>
+#include <mutex>
+
+
 struct Solver {
-    static void resolve_collision(Particle& body1, Particle& body2) {
+    static void resolve_collision(Particle& body1, Particle& body2, float sumOfRadii = config.particleSize * 2) {
         const float EPSILON = 1e-6f;
         
         float dX = body1.position.x - body2.position.x;
         float dY = body1.position.y - body2.position.y;
         float normalMagnitude = std::sqrt(dX * dX + dY * dY);
 
-        if (normalMagnitude < EPSILON) return;
+        if (normalMagnitude < EPSILON || normalMagnitude + EPSILON >= sumOfRadii) return;
 
         // get the normal force
         sf::Vector2f normalVector((dX / normalMagnitude), (dY / normalMagnitude));
 
-        // r1 + r2
-        float sumOfRadii = config.particleSize * 2;
-        if (normalMagnitude + EPSILON >= sumOfRadii) return;
-
         // v2 - v1
         sf::Vector2f velocityDifference = body1.velocity - body2.velocity;
-
-        // (2 x m2)
-        // ---------
-        //  m1 + m2
 
         // (v2 - v1) * (x2 - x1)
         float dotProductResult = dotProduct(velocityDifference, normalVector);
@@ -50,7 +46,7 @@ struct Solver {
     }
 
     // Brute Force O(n*n)
-    static void calculateGravity(std::vector<Particle>& particles) {
+    static void _calculateGravity(std::vector<Particle>& particles) {
         if (config.gravitational_constant == 0.0f) return;
 
         for (Particle& particle1 : particles) {
@@ -65,7 +61,53 @@ struct Solver {
             }
         }
     }
+    static void calculateGravity(std::vector<Particle>& particles) {
+        if (config.gravitational_constant == 0.0f) return;
 
+        // Mutex to protect access to particle forces
+        std::mutex forceMutex;
+
+        // Number of threads to use
+        // const int numThreads = std::thread::hardware_concurrency(); // Use the number of hardware threads available
+
+        const int numThreads = 10;
+        const int particlesPerThread = particles.size() / numThreads;
+
+        auto calculateForcesInRange = [&](int startIdx, int endIdx) {
+            for (int i = startIdx; i < endIdx; ++i) {
+                Particle& particle1 = particles[i];
+                particle1.force = {0.0f, 0.0f}; // Reset force
+
+                for (int j = 0; j < particles.size(); ++j) {
+                    if (i == j) continue;
+
+                    Particle& particle2 = particles[j];
+                    // Calculate gravitational force
+                    sf::Vector2f force = calculateGravitationalForce(
+                        particle1.mass, particle1.position, particle2.mass,
+                        particle2.position);
+
+                    // Lock the mutex while modifying the force
+                    std::lock_guard<std::mutex> lock(forceMutex);
+                    particle1.force += force;
+                }
+            }
+        };
+
+        // Create and launch threads
+        std::vector<std::thread> threads;
+        for (int i = 0; i < numThreads; ++i) {
+            int startIdx = i * particlesPerThread;
+            int endIdx = (i == numThreads - 1) ? particles.size() : (i + 1) * particlesPerThread;
+
+            threads.push_back(std::thread(calculateForcesInRange, startIdx, endIdx));
+        }
+
+        // Wait for all threads to finish
+        for (auto& t : threads) {
+            t.join();
+        }
+    }
     /*
           G * m1 * m2
     F =  --------------

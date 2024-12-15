@@ -24,7 +24,7 @@ struct WindowManager {
     }
 };
 
-sf::RenderWindow WindowManager::window(sf::VideoMode(1920, 1080), "");
+sf::RenderWindow WindowManager::window(sf::VideoMode(config.windowWidth, config.windowHeight), "");
 sf::RenderWindow& window = WindowManager::window;
 sf::Clock WindowManager::frameClock;
 

@@ -4,6 +4,7 @@ CXXFLAGS = -Wall -std=c++17 -I./include -I./pkg/nlohmann/json/include
 
 # SFML settings #
 SFML_FLAGS = -lsfml-graphics -lsfml-window -lsfml-system
+NVCCFLAGS = -std=c++17 -I./include -I./pkg/nlohmann/json/include
 
 -DCMAKE_EXPORT_COMPILE_COMMANDS=1
 # Target settings

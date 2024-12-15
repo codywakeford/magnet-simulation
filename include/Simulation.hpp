@@ -4,6 +4,7 @@
 #include "Solver.hpp" 
 #include "CollisionGrid.hpp"
 #include "TextManager.hpp"
+#include "BarnesHut.hpp"
 
 struct Simulation {
     static bool isPaused;
@@ -16,8 +17,6 @@ struct Simulation {
     static int frameCount;
     static int totalSimulationTimeUs;
 
-
-
     static void update(float dt) {
         frameTimer.restart();
 
@@ -29,10 +28,10 @@ struct Simulation {
         collisionGrid.assignParticlesToGrid(Particle::particles);
         collisionGrid.checkCollisionsInGrid();
 
-        Solver::calculateGravity(Particle::particles);
-        Particle::updateAll(dt);
+        quadTree.update();
 
-        // frameCount++;
+        // Solver::calculateGravity(Particle::particles);
+        Particle::updateAll(dt);
         TextManager::update();
 
         handleTimer();
