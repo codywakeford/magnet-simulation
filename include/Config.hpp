@@ -12,11 +12,11 @@ struct Config {
 
     // Gravity
     // Gravity constant can be made constexpr if it remains constant throughout the program
-    constexpr static float gravitational_constant = 10.0f;
-    constexpr static float gravitationalSoftening = 10000000.0f;
+    constexpr static float gravitational_constant = 1e5f;
+    constexpr static float gravitationalSoftening = 1e12f;
 
     // Collision settings
-    constexpr static float COLLISION_DAMPENING = 0.1f;
+    constexpr static float COLLISION_DAMPENING = 0.25f;
 
     // Window dimensions
     constexpr static int windowHeight = 1200;
@@ -27,7 +27,7 @@ struct Config {
 
 
     // Barnes Hut
-    constexpr static float theta = 0.50f; // gravity approximation threshold
+    constexpr static float theta = 0.9f; // gravity approximation threshold
 };
 
 extern Config config;

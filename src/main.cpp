@@ -13,7 +13,6 @@
 
 
 Config config; // Stores Globals
-CollisionGrid collisionGrid;
 
 int main() {
 
@@ -21,7 +20,25 @@ int main() {
         return "Particles: " + std::to_string(Particle::particles.size());
     });
 
-    LiveText simulationTime({10.0f, 40.0f}, []() -> std::string {
+
+    LiveText renderingTime({10.0f, 40.0f}, [&]() -> std::string {
+        return "Rendering Time: " + std::to_string(Renderer::renderTimeUs) + "us";
+    });
+
+    LiveText inputHandlingTime({10.0f, 70.0f}, [&]() -> std::string {
+        return "Input Handling Time: " + std::to_string(InputManager::timeUs) + "us";
+    });
+
+    LiveText fps({10.0f, 100.0f}, []() -> std::string {
+        return "FPS: " + std::to_string(Simulation::fps);
+    });
+
+    LiveText paused({900.0f, 10.0f}, []() -> std::string {
+        if (Simulation::isPaused) return "PAUSED";
+        return "";
+    });
+
+    LiveText simulationTime({10.0f, 220.0f}, []() -> std::string {
         if (Simulation::simulationTimeUs > 1000) {
             return "Simulation Time: " + std::to_string(Simulation::simulationTimeUs / 1000) + "ms";
         }
@@ -31,32 +48,39 @@ int main() {
         }
     });
 
-    LiveText renderingTime({10.0f, 70.0f}, [&]() -> std::string {
-        return "Rendering Time: " + std::to_string(Renderer::renderTimeUs) + "us";
+    LiveText collisionTime({10.0f, 160.0f}, []() -> std::string {
+        if (Simulation::collisionTime > 1000) {
+            return "Collision Time: " + std::to_string(Simulation::collisionTime / 1000) + "ms";
+        }
+
+        else {
+            return "Collision Time: " + std::to_string(Simulation::collisionTime) + "us";
+        }
     });
 
-    LiveText inputHandlingTime({10.0f, 100.0f}, [&]() -> std::string {
-        return "Input Handling Time: " + std::to_string(InputManager::timeUs) + "us";
+    LiveText gravityTime({10.0f, 190.0f}, []() -> std::string {
+        if (Simulation::gravityTime > 1000) {
+            return "Gravity Time: " + std::to_string(Simulation::gravityTime / 1000) + "ms";
+        }
+
+        else {
+            return "Gravity Time: " + std::to_string(Simulation::gravityTime) + "us";
+        }
     });
 
-    LiveText fps({10.0f, 130.0f}, []() -> std::string {
-        return "FPS: " + std::to_string(Simulation::fps);
-    });
-
-    LiveText paused({900.0f, 10.0f}, []() -> std::string {
-        if (Simulation::isPaused) return "PAUSED";
-        return "";
-    });
 
     TextManager::textObjects.push_back(liveText);
-    TextManager::textObjects.push_back(simulationTime);
     TextManager::textObjects.push_back(renderingTime);
     TextManager::textObjects.push_back(fps);
     TextManager::textObjects.push_back(inputHandlingTime);
     TextManager::textObjects.push_back(paused);
 
-    Particle::uniform_disc(2500);
+    TextManager::textObjects.push_back(simulationTime);
+    TextManager::textObjects.push_back(gravityTime);
+    TextManager::textObjects.push_back(collisionTime);
 
+    Particle::uniform_disc(1000);
+    CollisionGrid::initialize();
 
     while (window.isOpen()) {
         Simulation::update(config.dt);

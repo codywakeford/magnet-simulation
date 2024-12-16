@@ -101,12 +101,14 @@ struct InputManager {
     } 
 
     static void updateParticleCount(sf::Event& event) {
-        if (event.mouseWheelScroll.delta > 0) {
-            nParticles += 3;
+        
+
+        if (event.mouseWheelScroll.delta > 0 && nParticles < 1000) {
+            nParticles += 20;
         } 
         
-        else if (nParticles > 3) {
-            nParticles -= 3;
+        else if (nParticles > 20) {
+            nParticles -= 20;
             
         }
     }
@@ -192,7 +194,7 @@ std::vector<Particle> InputManager::particles;
 sf::Vector2f InputManager::mousePosF = {0.0f, 0.0f};
 sf::Vector2i InputManager::mousePosI = {0, 0};
 
-int InputManager::nParticles = 50;
+int InputManager::nParticles = 20;
 int InputManager::radius = config.particleSize;
 sf::Vector2f InputManager::particleVelocity = {0.0f, 0.0f};
 

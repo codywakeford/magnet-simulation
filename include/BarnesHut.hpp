@@ -8,7 +8,7 @@
 
 #include <thread>
 #include <vector>
-#include <functional> // For std::bind
+#include <functional>
 
 // Node struct
 struct Node {
@@ -20,6 +20,10 @@ struct Node {
     Particle* particle = nullptr; // Pointer to a particle (if any)
     std::array<Node*, 4> children = {nullptr, nullptr, nullptr, nullptr};
 
+    std::mutex massMutex;
+    std::mutex particleMutex;
+    std::mutex nodeMutex;
+    
     // Rendering //
     sf::RectangleShape rectangle;
 
@@ -37,7 +41,7 @@ struct Node {
             delete child;
         }
     }
-    
+
     void render() {
         if (!isLeaf) {
             for (auto& child : children) {
@@ -64,7 +68,6 @@ struct Node {
         centerOfMass = {0.0f, 0.0f};
     }
 
-    // Check if a particle is within the node boundaries
     bool contains(const Particle& particle) const {
         return particle.position.x >= position.x &&
                particle.position.x < position.x + size &&
@@ -72,7 +75,6 @@ struct Node {
                particle.position.y < position.y + size;
     }
 
-    // Subdivide the node into four quadrants
     void subdivide() {
         float halfSize = size / 2.0f;
         children[0] = new Node(position, halfSize);                            // NW
@@ -83,82 +85,106 @@ struct Node {
     }
 
 
-    // Insert a particle into the tree
-    void insert(Particle& particle) {
-        if (!contains(particle)) {
-            return; // Particle is not within this node
+    void _insert(std::vector<Particle>& particles) {
+        if (particles.empty()) return;
+
+        const int numThreads = std::min(std::thread::hardware_concurrency(), static_cast<unsigned int>(particles.size()));
+        std::vector<std::thread> threads;
+        int particlesPerThread = particles.size() / numThreads;
+
+        for (int i = 0; i < numThreads; i++) {
+            int particleStart = i * particlesPerThread;
+            int particleEnd = (i == numThreads - 1) ? particles.size() : particleStart + particlesPerThread;
+
+            threads.emplace_back([this, &particles, particleStart, particleEnd]() {
+                for (int j = particleStart; j < particleEnd; j++) {
+                    this->insert(particles[j]);
+                }
+            });
         }
 
+        for (auto& t : threads) {
+            if (t.joinable()) {
+                t.join();
+            }
+        }
+    }
+
+    void insert(Particle& particle) {
+        if (!contains(particle)) return;
+
         if (isLeaf) {
+            std::lock_guard<std::mutex> lock(particleMutex);
             if (!this->particle) {
-                // Node is empty; store the particle here
                 this->particle = &particle;
                 centerOfMass = particle.position;
                 totalMass = particle.mass;
                 return;
             }
 
-            // Node already has a particle; subdivide and redistribute
             subdivide();
 
-            // Reinsert the existing particle
             Particle* existingParticle = this->particle;
             this->particle = nullptr;
+
             for (auto& child : children) {
-                child->insert(*existingParticle);
+                if (child->contains(*existingParticle)) {
+                    child->insert(*existingParticle);
+                    break;
+                }
             }
 
-            // Insert the new particle
             for (auto& child : children) {
-                child->insert(particle);
+                if (child->contains(particle)) {
+                    child->insert(particle);
+                    break;
+                }
             }
         } else {
-            // Pass the particle to the appropriate child
             for (auto& child : children) {
-                child->insert(particle);
+                if (child->contains(particle)) {
+                    child->insert(particle);
+                    break;
+                }
             }
         }
 
-        // Update the center of mass and total mass
-        totalMass += particle.mass;
-        centerOfMass.x = (centerOfMass.x * (totalMass - particle.mass) + particle.position.x * particle.mass) / totalMass;
-        centerOfMass.y = (centerOfMass.y * (totalMass - particle.mass) + particle.position.y * particle.mass) / totalMass;
+        // Thread-safe update of total mass and center of mass
+        {
+            std::lock_guard<std::mutex> lock(massMutex);
+            totalMass += particle.mass;
+            centerOfMass.x = (centerOfMass.x * (totalMass - particle.mass) + particle.position.x * particle.mass) / totalMass;
+            centerOfMass.y = (centerOfMass.y * (totalMass - particle.mass) + particle.position.y * particle.mass) / totalMass;
+        }
     }
+
+
 
     // Compute center of mass using DFS
     void computeMassDistribution() {
-        if (isLeaf) {
-            // Leaf node: Center of mass and total mass are already set
-            return;
-        }
+        if (isLeaf) return;
 
-        // Reset total mass and center of mass for recomputation
         totalMass = 0.0f;
         centerOfMass = {0.0f, 0.0f};
 
-        // Iterate through children to compute center of mass and total mass
         for (auto& child : children) {
             if (child) {
                 child->computeMassDistribution();
 
-                // Accumulate total mass
                 totalMass += child->totalMass;
 
-                // Accumulate weighted center of mass
                 centerOfMass.x += child->centerOfMass.x * child->totalMass;
                 centerOfMass.y += child->centerOfMass.y * child->totalMass;
             }
         }
 
         if (totalMass > 0) {
-            // Finalize center of mass calculation
             centerOfMass.x /= totalMass;
             centerOfMass.y /= totalMass;
         }
     }
 
     void calculateForce(Particle& particle, const Node* node) {
-        // Avoid self-interaction
         if (node->particle == &particle && node->isLeaf) {
             return;
         }
@@ -166,12 +192,14 @@ struct Node {
         sf::Vector2f direction = node->centerOfMass - particle.position;
         float distance = std::sqrt(direction.x * direction.x + direction.y * direction.y) + config.epsilon;
         
-        if (distance < config.particleSize) {
+        if (distance < config.particleSize * 25) {
             return;
         }
 
-        // Check if we can approximate
-        if (node->totalMass < 100.0f) return;
+        if (node->totalMass < 50.0f) return;
+
+        // Here we check if the we meet the approximation criteria, if so use that 
+        // data, if not recurse into children to get a more accurate force.
         if (node->isLeaf || (node->size / distance < config.theta)) {
             float force = 
                 (config.gravitational_constant * particle.mass * node->totalMass) / 
@@ -181,7 +209,6 @@ struct Node {
             particle.force += forceVector;
 
         } else {
-            // Recurse into child nodes
             for (auto& child : node->children) {
                 if (child) {
                     calculateForce(particle, child);
@@ -196,8 +223,6 @@ struct Node {
 class QuadTree {
 public:
     Node* root;
-    float theta = 0.5f; // appoximation threshold
-
 
     QuadTree(const sf::Vector2f& position, float size) {
         root = new Node(position, size);
@@ -207,43 +232,58 @@ public:
         clear();
     }
 
-    void update() {
+    void _update() {
         reset();
         insert(Particle::particles);
         computeMassDistribution();
         calculateForces(Particle::particles);
     }
 
-    void insert(std::vector<Particle>& particles) {
-        for (auto& particle : particles) {
+    void update() {
+        sf::Clock clock; // Create a clock for timing
+        
+        clock.restart();
+        reset();
+        std::cout << "reset() took: " << clock.getElapsedTime().asMicroseconds() << " us" << std::endl;
 
-            root->insert(particle);
-        }
+        clock.restart();
+        insert(Particle::particles);
+        std::cout << "insert() took: " << clock.getElapsedTime().asMicroseconds() << " us" << std::endl;
+
+        clock.restart();
+        computeMassDistribution();
+        std::cout << "computeMassDistribution() took: " << clock.getElapsedTime().asMicroseconds() << " us" << std::endl;
+
+        clock.restart();
+        calculateForces(Particle::particles);
+        std::cout << "calculateForces() took: " << clock.getElapsedTime().asMicroseconds() << " us" << std::endl;
+    }
+    
+    void insert(std::vector<Particle>& particles) {
+        root->_insert(particles);
     }
 
     void render() {
         root->render();   
     }
 
-    // TODO: dfs to calculate center of mass
     void computeMassDistribution() {
         root->computeMassDistribution();
     }
-    // Clear the entire quadtree
+    
     void clear() {
         if (root) {
-            root->clear();  // Clear the root node recursively
-            delete root;    // Free the root node memory
-            root = nullptr; // Reset the root pointer
+            root->clear();
+            delete root;
+            root = nullptr;
         }
     }
-
-    // Reinitialize the QuadTree
+    
     void reset() {
-        clear(); // Clear the existing tree
+        delete root; 
+  
         root = new Node({0.0f, 0.0f}, config.windowWidth);
     }
-
 
     void _calculateForces(std::vector<Particle>& particles) {
         for (auto& particle : particles) {
@@ -251,31 +291,27 @@ public:
         }
     }
 
-
     void calculateForces(std::vector<Particle>& particles) {
-        const size_t numThreads = 6;
+        const size_t numThreads = std::thread::hardware_concurrency();
         const size_t numParticles = particles.size();
         const size_t chunkSize = (numParticles + numThreads - 1) / numThreads; 
 
         std::vector<std::thread> threads;
 
-        // Function to calculate forces for a chunk of particles
         auto calculateChunk = [&](size_t start, size_t end) {
             for (size_t i = start; i < end; ++i) {
                 root->calculateForce(particles[i], root);
             }
         };
 
-        // Launch threads
         for (size_t t = 0; t < numThreads; ++t) {
             size_t start = t * chunkSize;
-            size_t end = std::min(start + chunkSize, numParticles); // Ensure end does not exceed particles.size()
-            if (start < end) { // Only create a thread if there's work to do
+            size_t end = std::min(start + chunkSize, numParticles); 
+            if (start < end) {
                 threads.emplace_back(calculateChunk, start, end);
             }
         }
 
-        // Join threads
         for (auto& thread : threads) {
             thread.join();
         }
@@ -292,7 +328,7 @@ massivly reduce the amount of checks done. The further a particle is from a quad
 
 Tasks:
 
-1. Assign every particle a unique quadrant in the scene.
+1. Assign every particle a unique quadrant in the scene. Dividing a node recursivly if necessary.
 2. Compute the center of mass' for every quadrant using dfs.
 3. iterate over each particle and compare the accuracy with theta. Recursivly go down the tree the more precision is needed.
 
@@ -307,8 +343,6 @@ Node:
     Node will potentially contain 4 child nodes.
 
     subdivide() will add 4 child nodes and append nodes into them
-
-Quad:
 
 */
 

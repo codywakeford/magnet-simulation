@@ -13,24 +13,35 @@ struct Simulation {
     static int fps;
 
     static sf::Clock frameTimer;
+    
+    static sf::Clock collisionTimer;
+    static int collisionTime;
+
+    static sf::Clock gravityTimer;
+    static int gravityTime;
+
     static int simulationTimeUs;
     static int frameCount;
     static int totalSimulationTimeUs;
 
+
     static void update(float dt) {
         frameTimer.restart();
+        
 
         if (isPaused) {
             TextManager::update();
             return;
         }
 
-        collisionGrid.assignParticlesToGrid(Particle::particles);
-        collisionGrid.checkCollisionsInGrid();
-
+        gravityTimer.restart();
         quadTree.update();
+        if (frameCount == 1) gravityTime = gravityTimer.getElapsedTime().asMicroseconds();
 
-        // Solver::calculateGravity(Particle::particles);
+        collisionTimer.restart();
+        CollisionGrid::update(Particle::particles);
+        if (frameCount == 1) collisionTime = collisionTimer.getElapsedTime().asMicroseconds();
+
         Particle::updateAll(dt);
         TextManager::update();
 
@@ -52,12 +63,16 @@ struct Simulation {
 
 };
 
-
 int Simulation::fps = 60;
 bool Simulation::isPaused = false;
 
-
+sf::Clock Simulation::frameTimer;
 int Simulation::simulationTimeUs = 0;
 int Simulation::frameCount = 0;
 int Simulation::totalSimulationTimeUs = 0;
-sf::Clock Simulation::frameTimer;
+
+sf::Clock Simulation::collisionTimer;
+int Simulation::collisionTime = 0;
+
+sf::Clock Simulation::gravityTimer;
+int Simulation::gravityTime = 0;

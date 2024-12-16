@@ -10,12 +10,18 @@ struct CollisionGrid {
     constexpr static int nColumns = Config::windowWidth / cellSize;
     constexpr static int nRows = Config::windowHeight / cellSize;
 
-    std::vector<std::vector<std::vector<Particle*>>> cells;
+    static std::vector<std::vector<std::vector<Particle*>>> cells;
 
-    CollisionGrid()
-        : cells(nColumns, std::vector<std::vector<Particle*>>(nRows)) {}
+    static void initialize() {
+        cells.resize(nColumns, std::vector<std::vector<Particle*>>(nRows));
+    }
 
-    void assignParticlesToGrid(std::vector<Particle>& particles) {
+    static void update(std::vector<Particle>& particles) {
+        assignParticlesToGrid(particles);
+        checkCollisionsInGrid();
+    }
+
+    static void assignParticlesToGrid(std::vector<Particle>& particles) {
         // Clear all cells
         for (auto& col : cells) {
             for (auto& cell : col) {
@@ -34,7 +40,7 @@ struct CollisionGrid {
         }
     }
 
-    void _checkCollisionsInGrid() {
+    static void _checkCollisionsInGrid() {
         const int dx[9] = {-1, -1, -1,  0, 0, 0,  1, 1, 1};
         const int dy[9] = {-1,  0,  1, -1, 0, 1, -1, 0, 1};
 
@@ -60,7 +66,7 @@ struct CollisionGrid {
     }
 
     // Threaded
-    void checkCollisionsInGrid() {
+    static void checkCollisionsInGrid() {
         const int dx[9] = {-1, -1, -1,  0, 0, 0,  1, 1, 1};
         const int dy[9] = {-1,  0,  1, -1, 0, 1, -1, 0, 1};
 
@@ -87,7 +93,7 @@ struct CollisionGrid {
             }
         };
 
-        const int numThreads = 1; 
+        const int numThreads = std::thread::hardware_concurrency();; 
         std::vector<std::thread> threads;
         int rowsPerThread = nRows / numThreads;
 
@@ -102,6 +108,8 @@ struct CollisionGrid {
         }
     }
 };
+
+std::vector<std::vector<std::vector<Particle*>>> CollisionGrid::cells;
 
 // constexpr int CollisionGrid::cellSize = Config::particleSize;
 extern CollisionGrid collisionGrid;
