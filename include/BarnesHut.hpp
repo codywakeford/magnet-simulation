@@ -42,6 +42,17 @@ struct Node {
         }
     }
 
+    void resetNode() {
+        particle = nullptr;
+        totalMass = 0.0f;
+        centerOfMass = {0.0f, 0.0f};
+        for (auto& child : children) {
+            if (child) {
+                child->resetNode();
+            }
+        }
+    }
+    
     void render() {
         if (!isLeaf) {
             for (auto& child : children) {
@@ -83,7 +94,6 @@ struct Node {
         children[3] = new Node({position.x, position.y + halfSize}, halfSize); // SW
         isLeaf = false;
     }
-
 
     void _insert(std::vector<Particle>& particles) {
         if (particles.empty()) return;
@@ -281,8 +291,7 @@ public:
     
     void reset() {
         delete root; 
-  
-        root = new Node({0.0f, 0.0f}, config.windowWidth);
+        root = new Node({0.0f, 0.0f}, config.windowWidth);  // Initialize as needed
     }
 
     void _calculateForces(std::vector<Particle>& particles) {

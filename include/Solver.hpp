@@ -64,13 +64,9 @@ struct Solver {
     static void calculateGravity(std::vector<Particle>& particles) {
         if (config.gravitational_constant == 0.0f) return;
 
-        // Mutex to protect access to particle forces
         std::mutex forceMutex;
 
-        // Number of threads to use
-        // const int numThreads = std::thread::hardware_concurrency(); // Use the number of hardware threads available
-
-        const int numThreads = 10;
+        const int numThreads = std::thread::hardware_concurrency(); 
         const int particlesPerThread = particles.size() / numThreads;
 
         auto calculateForcesInRange = [&](int startIdx, int endIdx) {
