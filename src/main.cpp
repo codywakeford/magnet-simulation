@@ -20,14 +20,12 @@ int main() {
 
     Particle::uniform_disc(1000);
     CollisionGrid::initialize();
+    Node::initializeNodePool(10000);
 
     while (window.isOpen()) {
         Simulation::update(config.dt);
-
         InputManager::handle_inputs();
-
         Renderer::render();
-
         WindowManager::awaitFrame();
     }
 

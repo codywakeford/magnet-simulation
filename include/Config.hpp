@@ -27,7 +27,7 @@ struct Config {
 
 
     // Barnes Hut
-    constexpr static float theta = 0.5f; // gravity approximation threshold
+    constexpr static float theta = 0.9f; // gravity approximation threshold
 };
 
 extern Config config;

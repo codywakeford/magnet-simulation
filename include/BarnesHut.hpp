@@ -10,6 +10,8 @@
 #include <vector>
 #include <functional>
 
+using namespace std;
+
 // Node struct
 struct Node {
     sf::Vector2f position;     // Top-left corner of the node
@@ -18,22 +20,25 @@ struct Node {
     float totalMass = 0.0f;    // Total mass in the node
     bool isLeaf = true;        // Leaf status
     Particle* particle = nullptr; // Pointer to a particle (if any)
-    std::array<Node*, 4> children = {nullptr, nullptr, nullptr, nullptr};
+    array<Node*, 4> children = {nullptr, nullptr, nullptr, nullptr};
 
-    std::mutex massMutex;
-    std::mutex particleMutex;
-    std::mutex nodeMutex;
+    mutex massMutex;
+    mutex particleMutex;
+    mutex nodeMutex;
     
     // Rendering //
-    sf::RectangleShape rectangle;
+    // sf::RectangleShape rectangle;
+
+    static vector<Node*> nodePool;
+    static mutex poolMutex;
 
     Node(const sf::Vector2f& position, float size)
         : position(position), size(size), centerOfMass({0.0f, 0.0f}) {
             
-            rectangle.setPosition(position);
-            rectangle.setOutlineThickness(0.1f);
-            rectangle.setFillColor(sf::Color::Transparent);
-            rectangle.setSize({size, size});
+            // rectangle.setPosition(position);
+            // rectangle.setOutlineThickness(0.1f);
+            // rectangle.setFillColor(sf::Color::Transparent);
+            // rectangle.setSize({size, size});
         }
 
     ~Node() {
@@ -42,28 +47,62 @@ struct Node {
         }
     }
 
+    static Node* acquireNode() {
+        lock_guard<mutex> lock(poolMutex);
+        if (!nodePool.empty()) {
+            Node* node = nodePool.back();
+            nodePool.pop_back();
+            return node;
+        }
+        
+        return new Node({0.0f, 0.0f}, 0.0f);
+    }
+
+    static void releaseNode(Node* node) {
+        if (node) {
+            node->resetNode(); 
+            lock_guard<mutex> lock(poolMutex);
+            nodePool.push_back(node);
+        }
+    }
+
+
+    static void initializeNodePool(int nodeCount) {
+        lock_guard<mutex> lock(poolMutex);
+        for (int i = 0; i < nodeCount; i++) {
+            nodePool.push_back(new Node({0.0f, 0.0f}, 0.0f));
+        }
+    }
+
+
     void resetNode() {
-        particle = nullptr;
-        totalMass = 0.0f;
+        position = {0.0f, 0.0f};
         centerOfMass = {0.0f, 0.0f};
+        size = 0.0f;
+        totalMass = 0.0f;
+        isLeaf = true;
+        particle = nullptr;
+
+        // Reset child pointers
         for (auto& child : children) {
             if (child) {
-                child->resetNode();
+                releaseNode(child);
+                child = nullptr;
             }
         }
     }
     
-    void render() {
-        if (!isLeaf) {
-            for (auto& child : children) {
-                child->render();
-            }
-            return;
-        }
+    // void render() {
+    //     if (!isLeaf) {
+    //         for (auto& child : children) {
+    //             child->render();
+    //         }
+    //         return;
+    //     }
 
-        rectangle.setSize({size, size});
-        window.draw(rectangle);
-    }
+    //     rectangle.setSize({size, size});
+    //     window.draw(rectangle);
+    // }
     
     void clear() {
         for (auto& child : children) {
@@ -88,18 +127,33 @@ struct Node {
 
     void subdivide() {
         float halfSize = size / 2.0f;
-        children[0] = new Node(position, halfSize);                            // NW
-        children[1] = new Node({position.x + halfSize, position.y}, halfSize); // NE
-        children[2] = new Node({position.x + halfSize, position.y + halfSize}, halfSize); // SE
-        children[3] = new Node({position.x, position.y + halfSize}, halfSize); // SW
+
+        // Acquire nodes from the pool and initialize them
+        children[0] = Node::acquireNode(); // NW
+        children[0]->position = position;
+        children[0]->size = halfSize;
+
+        children[1] = Node::acquireNode(); // NE
+        children[1]->position = {position.x + halfSize, position.y};
+        children[1]->size = halfSize;
+
+        children[2] = Node::acquireNode(); // SE
+        children[2]->position = {position.x + halfSize, position.y + halfSize};
+        children[2]->size = halfSize;
+
+        children[3] = Node::acquireNode(); // SW
+        children[3]->position = {position.x, position.y + halfSize};
+        children[3]->size = halfSize;
+
         isLeaf = false;
     }
 
-    void _insert(std::vector<Particle>& particles) {
+
+    void _insert(vector<Particle>& particles) {
         if (particles.empty()) return;
 
-        const int numThreads = std::min(std::thread::hardware_concurrency(), static_cast<unsigned int>(particles.size()));
-        std::vector<std::thread> threads;
+        const int numThreads = min(thread::hardware_concurrency(), static_cast<unsigned int>(particles.size()));
+        vector<thread> threads;
         int particlesPerThread = particles.size() / numThreads;
 
         for (int i = 0; i < numThreads; i++) {
@@ -124,7 +178,7 @@ struct Node {
         if (!contains(particle)) return;
 
         if (isLeaf) {
-            std::lock_guard<std::mutex> lock(particleMutex);
+            lock_guard<mutex> lock(particleMutex);
             if (!this->particle) {
                 this->particle = &particle;
                 centerOfMass = particle.position;
@@ -161,7 +215,7 @@ struct Node {
 
         // Thread-safe update of total mass and center of mass
         {
-            std::lock_guard<std::mutex> lock(massMutex);
+            lock_guard<mutex> lock(massMutex);
             totalMass += particle.mass;
             centerOfMass.x = (centerOfMass.x * (totalMass - particle.mass) + particle.position.x * particle.mass) / totalMass;
             centerOfMass.y = (centerOfMass.y * (totalMass - particle.mass) + particle.position.y * particle.mass) / totalMass;
@@ -200,7 +254,7 @@ struct Node {
         }
 
         sf::Vector2f direction = node->centerOfMass - particle.position;
-        float distance = std::sqrt(direction.x * direction.x + direction.y * direction.y) + config.epsilon;
+        float distance = sqrt(direction.x * direction.x + direction.y * direction.y) + config.epsilon;
         
         if (distance < config.particleSize * 25) {
             return;
@@ -229,10 +283,17 @@ struct Node {
 
 };
 
+std::vector<Node*> Node::nodePool;
+std::mutex Node::poolMutex;
 
 class QuadTree {
 public:
     Node* root;
+
+    vector<Node*> nodes;
+
+    // store all nodes in a vector
+    // 
 
     QuadTree(const sf::Vector2f& position, float size) {
         root = new Node(position, size);
@@ -254,28 +315,28 @@ public:
         
         clock.restart();
         reset();
-        std::cout << "reset() took: " << clock.getElapsedTime().asMicroseconds() << " us" << std::endl;
+        cout << "reset() took: " << clock.getElapsedTime().asMicroseconds() << " us" << endl;
 
         clock.restart();
         insert(Particle::particles);
-        std::cout << "insert() took: " << clock.getElapsedTime().asMicroseconds() << " us" << std::endl;
+        cout << "insert() took: " << clock.getElapsedTime().asMicroseconds() << " us" << endl;
 
         clock.restart();
         computeMassDistribution();
-        std::cout << "computeMassDistribution() took: " << clock.getElapsedTime().asMicroseconds() << " us" << std::endl;
+        cout << "computeMassDistribution() took: " << clock.getElapsedTime().asMicroseconds() << " us" << endl;
 
         clock.restart();
         calculateForces(Particle::particles);
-        std::cout << "calculateForces() took: " << clock.getElapsedTime().asMicroseconds() << " us" << std::endl;
+        cout << "calculateForces() took: " << clock.getElapsedTime().asMicroseconds() << " us" << endl;
     }
     
-    void insert(std::vector<Particle>& particles) {
+    void insert(vector<Particle>& particles) {
         root->_insert(particles);
     }
 
-    void render() {
-        root->render();   
-    }
+    // void render() {
+    //     root->render();   
+    // }
 
     void computeMassDistribution() {
         root->computeMassDistribution();
@@ -290,22 +351,35 @@ public:
     }
     
     void reset() {
-        delete root; 
-        root = new Node({0.0f, 0.0f}, config.windowWidth);  // Initialize as needed
+        if (root) {
+            for (auto& child : root->children) {
+                if (child) {
+                    Node::releaseNode(child);
+                    child = nullptr;
+                }
+            }
+
+            root->centerOfMass = {0.0f, 0.0f}; 
+            root->totalMass = 0.0f;
+            root->isLeaf = true;
+            root->particle = nullptr;
+            root->children.fill(nullptr);
+        }
     }
 
-    void _calculateForces(std::vector<Particle>& particles) {
+
+    void _calculateForces(vector<Particle>& particles) {
         for (auto& particle : particles) {
             root->calculateForce(particle, root);
         }
     }
 
-    void calculateForces(std::vector<Particle>& particles) {
-        const size_t numThreads = std::thread::hardware_concurrency();
+    void calculateForces(vector<Particle>& particles) {
+        const size_t numThreads = thread::hardware_concurrency();
         const size_t numParticles = particles.size();
         const size_t chunkSize = (numParticles + numThreads - 1) / numThreads; 
 
-        std::vector<std::thread> threads;
+        vector<thread> threads;
 
         auto calculateChunk = [&](size_t start, size_t end) {
             for (size_t i = start; i < end; ++i) {
@@ -315,7 +389,7 @@ public:
 
         for (size_t t = 0; t < numThreads; ++t) {
             size_t start = t * chunkSize;
-            size_t end = std::min(start + chunkSize, numParticles); 
+            size_t end = min(start + chunkSize, numParticles); 
             if (start < end) {
                 threads.emplace_back(calculateChunk, start, end);
             }
