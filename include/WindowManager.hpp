@@ -11,8 +11,8 @@ struct WindowManager {
 
     WindowManager() {
         window.setFramerateLimit(60);
-        settings.antialiasingLevel = 0;
-        window.setVerticalSyncEnabled(false);
+        // settings.antialiasingLevel = 0;
+        // window.setVerticalSyncEnabled(false);
 
     }
 

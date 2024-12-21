@@ -1,6 +1,6 @@
 # Compiler settings #
 CXX = g++
-CXXFLAGS = -Wall -std=c++17 -I./include 
+CXXFLAGS = -Wall -std=c++17 -I./include -I/usr/include/glm
 
 # SFML settings #
 SFML_FLAGS = -lsfml-graphics -lsfml-window -lsfml-system

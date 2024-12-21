@@ -12,8 +12,8 @@ struct Config {
 
     // Gravity
     // Gravity constant can be made constexpr if it remains constant throughout the program
-    constexpr static float gravitational_constant = 1e5f;
-    constexpr static float gravitationalSoftening = 1e12f;
+    constexpr static float gravitational_constant = 10.0f;
+    constexpr static float gravitationalSoftening = 1e5f;
 
     // Collision settings
     constexpr static float COLLISION_DAMPENING = 0.25f;
@@ -25,9 +25,8 @@ struct Config {
     // Particle size
     constexpr static int particleSize = 2;
 
-
     // Barnes Hut
-    constexpr static float theta = 0.9f; // gravity approximation threshold
+    constexpr static float theta = 0.3f; // gravity approximation threshold
 };
 
 extern Config config;

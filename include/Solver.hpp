@@ -11,7 +11,7 @@
 
 struct Solver {
     static void resolve_collision(Particle& body1, Particle& body2, float sumOfRadii = config.particleSize * 2) {
-        const float EPSILON = 1e-6f;
+        const float EPSILON = 1.5f;
         
         float dX = body1.position.x - body2.position.x;
         float dY = body1.position.y - body2.position.y;
@@ -39,10 +39,12 @@ struct Solver {
         body2.velocity += scaleVec(impulse2, config.COLLISION_DAMPENING);
 
         // Positional correction to prevent overlap
-        float penetrationDepth = sumOfRadii - normalMagnitude;
+        float penetrationDepth = sumOfRadii - normalMagnitude + EPSILON;
         sf::Vector2f correctionVector = normalVector * (penetrationDepth / 2.0f);
-        body1.position += correctionVector;
-        body2.position -= correctionVector;
+        body1.force = -body1.force * 0.5f;
+        body2.force = -body2.force * 0.5f;
+        // body1.force += correctionVector;
+        // body2.force -= correctionVector;
     }
 
     // Brute Force O(n*n)

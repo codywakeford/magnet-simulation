@@ -7,9 +7,12 @@
 #include "Simulation.hpp"
 #include "Config.hpp"
 
+using namespace std;
+
+
 struct InputManager {
     // Holds all of the particles under the cursor; 
-    static std::vector<Particle> particles;
+    static vector<Particle> particles;
 
     static sf::Vector2f mousePosF;
     static sf::Vector2i mousePosI;
@@ -39,28 +42,30 @@ struct InputManager {
                 window.close();
             }
 
-
             switch (event.type) {
 
                 case sf::Event::KeyPressed:
                     if (event.key.code == sf::Keyboard::R) {
                         Particle::particles.clear();
+                        break;
                     }
                     else if (event.key.code == sf::Keyboard::Space) {
                         Simulation::isPaused = !Simulation::isPaused;
+                        break;
                     }
-
-                case sf::Event::MouseWheelScrolled:
-                    if (event.key.code == sf::Keyboard::LControl) {
-                        changeParticleSpacing(event);
+                    else if (event.key.code == sf::Keyboard::Z) {
+                        if (particleSpacing <= config.particleSize + 1.0f) return;
+                        particleSpacing -= 1.0f;
+                        break;
+                    }
+                    else if (event.key.code == sf::Keyboard::X) {
+                        particleSpacing +=  1.0f;
                         break;
                     }
 
-                    else {
-                        updateParticleCount(event);
-                    }
+                case sf::Event::MouseWheelScrolled:
+                    updateParticleCount(event);
                     break;
-
 
                 // Click and drag to add velocity to new object. // 
                 case sf::Event::MouseButtonPressed:
@@ -69,11 +74,9 @@ struct InputManager {
                     }
                     break;
 
-                // Create satellite on release //
                 case sf::Event::MouseButtonReleased:
                     if (event.mouseButton.button == sf::Mouse::Left) {
                         endDrag(window);
-                        
                     }
 
                     break;
@@ -101,25 +104,12 @@ struct InputManager {
     } 
 
     static void updateParticleCount(sf::Event& event) {
-        
-
-        if (event.mouseWheelScroll.delta > 0 && nParticles < 1000) {
-            nParticles += 20;
-        } 
-        
-        else if (nParticles > 20) {
-            nParticles -= 20;
-            
+        if (event.mouseWheelScroll.delta > 0 && (nParticles * 2) <= 4048) {
+            nParticles *= 2;
         }
-    }
-
-    static void changeParticleSpacing(sf::Event& event) {
-        if (event.mouseWheelScroll.delta > 0) {
-            particleSpacing += 0.5f;
-        } 
-
-        else if (particleSpacing > 1.0f) {
-            particleSpacing -= 0.5f;
+        
+        else if (event.mouseWheelScroll.delta < 0 && nParticles > 1) {
+            nParticles *= 0.5f;
         }
     }
 
@@ -127,33 +117,41 @@ struct InputManager {
         mousePosI = sf::Mouse::getPosition(window);
         mousePosF = sf::Vector2f(mousePosI);
 
-        int gridSide = static_cast<int>(std::sqrt(nParticles));
         size_t particleCount = static_cast<std::vector<Particle>::size_type>(nParticles);
 
+        // Ensure the particle vector has the correct size
         if (particles.size() != particleCount) {
-            particles.resize(particleCount, Particle({0.0f, 0.0f}, config.particleSize - 1, {0.0f, 0.0f}));
+            particles.resize(particleCount, Particle(mousePosF, config.particleSize - 1, {0.0f, 0.0f}));
         }
 
-        while (particles.size() < static_cast<std::vector<Particle>::size_type>(nParticles)) {
-            Particle newParticle({0.0f, 0.0f}, config.particleSize - 1, {0.0f, 0.0f});
+        while (particles.size() < particleCount) {
+            Particle newParticle(mousePosF, config.particleSize - 1, {0.0f, 0.0f});
             particles.push_back(newParticle);
         }
-        while (particles.size() > static_cast<std::vector<Particle>::size_type>(nParticles)) {
+
+        while (particles.size() > particleCount) {
             particles.pop_back();
         }
 
-        int particleIndex = 0;
-        for (int row = 0; row < gridSide && particleIndex < nParticles; ++row) {
-            for (int col = 0; col < gridSide && particleIndex < nParticles; ++col) {
-                // Avoid recomputing the same values every iteration
-                float offsetX = (col - gridSide / 2.0f) * particleSpacing;
-                float offsetY = (row - gridSide / 2.0f) * particleSpacing;
+        float particleDiameter = config.particleSize * 1.1f; 
+        float currentRadius = particleDiameter;          
+        size_t currentParticle = 0;
 
-                particles[particleIndex].position = {mousePosF.x + offsetX, mousePosF.y + offsetY};
-                ++particleIndex;
+        for (size_t i = 0; currentParticle < particles.size(); ++i) {
+            size_t particlesInRing = static_cast<size_t>(floor(2 * M_PI * currentRadius / particleDiameter));
+
+            for (size_t j = 0; j < particlesInRing && currentParticle < particles.size(); ++j) {
+                float angle = static_cast<float>(j) / particlesInRing * 2.0f * M_PI;
+
+                float offsetX = currentRadius * cos(angle);
+                float offsetY = currentRadius * sin(angle);
+                particles[currentParticle].position = {mousePosF.x + offsetX, mousePosF.y + offsetY};
+
+                ++currentParticle;
             }
-        }
 
+            currentRadius += particleDiameter;
+        }
     }
 
 
@@ -164,8 +162,7 @@ struct InputManager {
 
     static void endDrag(sf::RenderWindow& window) {
         sf::Vector2f velocity = dragStart - mousePosF;
-        std::cout << velocity.x << velocity.y << std::endl;
-        Particle::add(particles, (velocity * 0.2f));
+        Particle::add(particles, (velocity * 0.1f));
         InputManager::particles.clear();
 
         isDragging = false;
@@ -189,12 +186,12 @@ struct InputManager {
 
 };
 
-std::vector<Particle> InputManager::particles;
+vector<Particle> InputManager::particles;
 
 sf::Vector2f InputManager::mousePosF = {0.0f, 0.0f};
 sf::Vector2i InputManager::mousePosI = {0, 0};
 
-int InputManager::nParticles = 20;
+int InputManager::nParticles = 1;
 int InputManager::radius = config.particleSize;
 sf::Vector2f InputManager::particleVelocity = {0.0f, 0.0f};
 
@@ -202,7 +199,7 @@ bool InputManager::isDragging = false;
 sf::Vector2f InputManager::dragStart;
 sf::Vector2f InputManager::dragEnd;
 
-float InputManager::particleSpacing = 4.0f;
+float InputManager::particleSpacing = 1.0f;
 
 
 sf::Clock InputManager::frameTimer;

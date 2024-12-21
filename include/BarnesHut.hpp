@@ -254,13 +254,13 @@ struct Node {
         }
 
         sf::Vector2f direction = node->centerOfMass - particle.position;
-        float distance = sqrt(direction.x * direction.x + direction.y * direction.y) + config.epsilon;
+        float distance = sqrt(direction.x * direction.x + direction.y * direction.y);
         
-        if (distance < config.particleSize * 25) {
+        if (distance < config.particleSize) {
             return;
         }
 
-        if (node->totalMass < 50.0f) return;
+        // if (node->totalMass < 50.0f) return;
 
         // Here we check if the we meet the approximation criteria, if so use that 
         // data, if not recurse into children to get a more accurate force.
@@ -289,11 +289,6 @@ std::mutex Node::poolMutex;
 class QuadTree {
 public:
     Node* root;
-
-    vector<Node*> nodes;
-
-    // store all nodes in a vector
-    // 
 
     QuadTree(const sf::Vector2f& position, float size) {
         root = new Node(position, size);

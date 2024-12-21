@@ -18,7 +18,7 @@ Config config; // Stores Globals
 int main() {
     initText();
 
-    Particle::uniform_disc(1000);
+    // Particle::uniform_disc(1000);
     CollisionGrid::initialize();
     Node::initializeNodePool(10000);
 
